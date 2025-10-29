@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Happy Birthday Aanvi & Aashvi!</title>
+<style>
+  /* reset */
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  /* --- Always apply the background on the BODY (global) --- */
+  body {
+    min-height:100vh;
+    font-family: "Comic Sans MS", cursive, sans-serif;
+    background: url('aanvi.jpg') no-repeat center center fixed;
+    background-size: cover;
+    position: relative;
+    overflow:hidden;
+  }
+
+  /* dark blur overlay on top of the image (so text & fireworks stand out) */
+  body::before {
+    content:"";
+    position:fixed;
+    inset:0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px); /* soften the photo */
+    z-index: 0;
+    pointer-events:none;
+  }
+
+  /* Canvas sits above overlay but below content */
+  #fireworks {
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    z-index:1;
+    pointer-events:none; /* allow clicking the button */
+  }
+
+  /* page containers - content and start button */
+  .content {
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    z-index:2; /* above canvas & overlay */
+    color: #ffffff;
+    padding: 20px;
+    pointer-events:auto;
+  }
+
+  .hidden { display:none !important; }
+
+  h1 {
+    font-size:3.4rem;
+    color: #fff;
+    text-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    margin-bottom:12px;
+  }
+
+  .wishes {
+    font-size:1.6rem;
+    color: rgba(255,255,255,0.95);
+    line-height:1.6;
+    max-width:900px;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+
+  /* Start button — keep it visible and clickable */
+  #startBtn {
+    position:fixed;
+    right:36px;
+    bottom:36px;
+    z-index:3; /* above everything */
+    border: none;
+    padding: 18px 28px;
+    border-radius:28px;
+    font-size:1.25rem;
+    background: linear-gradient(135deg,#ff7eb3,#ffd76b);
+    color:#fff;
+    cursor:pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  /* keep name text above everything when it pops */
+  .name-text {
+    position:fixed;
+    z-index:4;
+    pointer-events:none;
+    font-weight:bold;
+    font-size:3rem;
+    text-shadow:0 6px 18px rgba(0,0,0,0.6);
+  }
+
+  /* balloon/emojis created by JS (z-index < content so they appear behind text) */
+  .balloons { z-index:1; position:fixed; font-size:2.4rem; pointer-events:none; }
+
+  /* small responsive */
+  @media (max-width:600px){
+    h1{ font-size:2rem; }
+    .wishes{ font-size:1rem; max-width:320px; }
+    #startBtn{ padding:12px 18px; font-size:1rem; right:14px; bottom:14px; }
+  }
+</style>
+</head>
+<body>
+  <!-- START BUTTON (visible immediately) -->
+  <button id="startBtn">🎉 Start Celebration!</button>
+
+  <!-- THE CANVAS (fireworks) -->
+  <canvas id="fireworks"></canvas>
+
+  <!-- WISH CONTENT (hidden at first, will be shown on start) -->
+  <div class="content hidden" id="content">
+    <div>
+      <h1>🎂 Happy Birthday 🎂</h1>
+      <div class="wishes">
+        May your days be filled with laughter,<br>
+        joy, and endless fun!<br>
+        🌟 Wishing you both a magical year ahead! 🌟
+      </div>
+    </div>
+  </div>
+
+  <!-- audio (optional) -->
+  <audio id="birthdayMusic" loop>
+    <source src="https://files.catbox.moe/nxnomf.mp3" type="audio/mpeg">
+  </audio>
+
+<script>
+/* ---------- UI hookup ---------- */
+const startBtn = document.getElementById('startBtn');
+const content = document.getElementById('content');
+const music = document.getElementById('birthdayMusic');
+
+startBtn.addEventListener('click', () => {
+  startBtn.classList.add('hidden');   // hide the button
+  content.classList.remove('hidden'); // show the wishes
+  // try to play audio (may be blocked by browser; user can unmute)
+  music.play().catch(()=>{ /* autoplay blocked — ok */ });
+  // start fireworks animation
+  startFireworks();
+});
+
+/* ---------- FIREWORKS (kept minimal, same behaviour as before) ---------- */
+const canvas = document.getElementById('fireworks');
+const ctx = canvas.getContext('2d');
+function fit() { canvas.width = innerWidth; canvas.height = innerHeight; }
+fit(); addEventListener('resize', fit);
+
+let fireworks = [], particles = [];
+const names = ['AANVI','AASHVI'];
+
+class Particle {
+  constructor(x,y,h){
+    this.x=x; this.y=y; this.h=h+Math.random()*30;
+    this.speed=Math.random()*6+1; this.angle=Math.random()*Math.PI*2;
+    this.friction=0.98; this.gravity=0.12; this.alpha=1; this.decay=0.015+Math.random()*0.02;
+  }
+  update(){
+    this.speed*=this.friction;
+    this.x += Math.cos(this.angle)*this.speed;
+    this.y += Math.sin(this.angle)*this.speed + this.gravity;
+    this.alpha -= this.decay;
+  }
+  draw(){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0,this.alpha);
+    ctx.beginPath();
+    ctx.fillStyle = `hsl(${this.h},100%,60%)`;
+    ctx.arc(this.x,this.y,2,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+class Firework {
+  constructor(x,y){
+    this.x=x; this.y=innerHeight; this.targetY=y; this.hue=Math.random()*360; this.exploded=false;
+  }
+  update(){
+    if(this.exploded) return;
+    this.y -= 6;
+    if(this.y <= this.targetY){
+      this.exploded = true;
+      for(let i=0;i<80;i++) particles.push(new Particle(this.x,this.y,this.hue));
+      showName(this.x,this.y,this.hue);
+    }
+  }
+  draw(){
+    if(this.exploded) return;
+    ctx.beginPath(); ctx.fillStyle = `hsl(${this.hue},100%,60%)`;
+    ctx.arc(this.x,this.y,3,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function showName(x,y,h){
+  const d = document.createElement('div');
+  d.className='name-text';
+  d.textContent = names[Math.floor(Math.random()*names.length)];
+  d.style.left = x+'px'; d.style.top = y+'px';
+  d.style.color = `hsl(${h},90%,65%)`;
+  d.style.transform = 'translate(-50%,-50%)';
+  document.body.appendChild(d);
+  setTimeout(()=> d.remove(), 2000);
+}
+
+function animate(){
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  if(Math.random() < 0.06) fireworks.push(new Firework(Math.random()*canvas.width, Math.random()*canvas.height*0.6));
+
+  for(let fw of fireworks){ fw.update(); fw.draw(); }
+  fireworks = fireworks.filter(f=>!f.exploded);
+
+  for(let p of particles){ p.update(); p.draw(); }
+  particles = particles.filter(p=>p.alpha>0);
+
+  requestAnimationFrame(animate);
+}
+
+function startFireworks(){
+  if(!window.__fw_started){
+    animate();
+    window.__fw_started = true;
+  }
+}
+
+/* optional: start automatically (uncomment if you want auto-start) */
+// startBtn.click(); // WARNING: audio likely blocked by browser if auto-played
+</script>
+</body>
+</html>
